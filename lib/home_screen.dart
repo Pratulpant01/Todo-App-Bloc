@@ -1,5 +1,7 @@
 import 'package:bloc_practise/blocs/todos/todos_bloc.dart';
+import 'package:bloc_practise/blocs/todos_filter/todos_filter_bloc.dart';
 import 'package:bloc_practise/todo_model.dart';
+import 'package:bloc_practise/todosfilter_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -10,64 +12,122 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<TodosBloc, TodosState>(
-      builder: (context, state) {
-        if (state is TodosLoading) {
-          return CircularProgressIndicator();
-        }
-        if (state is TodosLoaded) {
-          return Scaffold(
-            appBar: AppBar(
-              title: Text('Bloc Pattern To Dos'),
-              actions: [
-                IconButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AddToDo(),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Bloc Pattern To Dos'),
+          actions: [
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AddToDo(),
+                  ),
+                );
+              },
+              icon: Icon(
+                Icons.add,
+                color: Colors.white,
+              ),
+            ),
+          ],
+          bottom: TabBar(
+              onTap: (tabIndex) {
+                switch (tabIndex) {
+                  case 0:
+                    BlocProvider.of<TodosFilterBloc>(context).add(
+                      updateTodos(
+                        todosFilter: TodosFilter.pending,
                       ),
                     );
-                  },
+
+                    break;
+                  case 1:
+                    BlocProvider.of<TodosFilterBloc>(context).add(
+                      updateTodos(
+                        todosFilter: TodosFilter.completed,
+                      ),
+                    );
+
+                    break;
+                }
+              },
+              tabs: [
+                Tab(
                   icon: Icon(
-                    Icons.add,
-                    color: Colors.white,
+                    Icons.pending,
                   ),
                 ),
-              ],
-            ),
-            body: Padding(
-              padding: EdgeInsets.all(8.0),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      child: Text(
-                        'Pending To Dos..',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: state.todos.length,
-                        itemBuilder: (context, index) {
-                          return _todoCard(state.todos[index]);
-                        })
-                  ]),
-            ),
-          );
-        } else {
-          return Text('Something Went Wrong');
-        }
-      },
+                Tab(
+                  icon: Icon(
+                    Icons.add_task,
+                  ),
+                ),
+              ]),
+        ),
+        body: TabBarView(children: [
+          _todos("Pending To Dos"),
+          _todos("Completed To Dos"),
+        ]),
+      ),
     );
   }
 }
 
-Card _todoCard(Todo todo) {
+BlocConsumer<TodosFilterBloc, TodosFilterState> _todos(String title) {
+  return BlocConsumer<TodosFilterBloc, TodosFilterState>(
+    listener: ((context, state) {
+      if (state is TodosFilterLoaded) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Color(0xff000A1F),
+            content: Text(
+              'There are ${state.filteredTodos.length} To dos in your list',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        );
+      }
+    }),
+    builder: (context, state) {
+      if (state is TodosFilterLoading) {
+        return Center(child: CircularProgressIndicator());
+      }
+      if (state is TodosFilterLoaded) {
+        return Padding(
+          padding: EdgeInsets.all(8.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              ListView.builder(
+                shrinkWrap: true,
+                itemCount: state.filteredTodos.length,
+                itemBuilder: (context, index) {
+                  return _todoCard(context, state.filteredTodos[index]);
+                },
+              )
+            ],
+          ),
+        );
+      } else {
+        return Text('Something Went Wrong');
+      }
+    },
+  );
+}
+
+Card _todoCard(BuildContext context, Todo todo) {
   return Card(
     margin: EdgeInsets.only(bottom: 8.0, top: 8),
     child: Padding(
@@ -85,13 +145,25 @@ Card _todoCard(Todo todo) {
           Row(
             children: [
               IconButton(
-                onPressed: () {},
+                onPressed: () {
+                  context.read<TodosBloc>().add(
+                        UpdateTodo(
+                          todo: todo.copyWith(
+                            isCompleted: true,
+                          ),
+                        ),
+                      );
+                },
                 icon: Icon(
                   Icons.add_task,
                 ),
               ),
               IconButton(
-                onPressed: () {},
+                onPressed: () {
+                  context.read<TodosBloc>().add(
+                        DeleteTodo(todo: todo),
+                      );
+                },
                 icon: Icon(
                   Icons.cancel,
                 ),

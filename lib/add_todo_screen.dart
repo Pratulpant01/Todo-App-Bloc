@@ -41,6 +41,7 @@ class AddToDo extends StatelessWidget {
                       description: controllerDescription.text,
                     );
                     context.read<TodosBloc>().add(AddTodo(todo: todo));
+                    Navigator.pop(context);
                   },
                   child: Text('Add Todo'),
                   style: ElevatedButton.styleFrom(
